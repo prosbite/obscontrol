@@ -27,7 +27,7 @@ onMounted(async () => {
   channel = echo.channel('graphics')
   channel.listen('.LowerThirdShown', (e: any) => store.sync({ activeLowerThird: e.lowerThird, lowerThirdVisible: true }))
   channel.listen('.LowerThirdHidden', () => store.sync({ lowerThirdVisible: false }))
-  channel.listen('.LyricsShown', (e: any) => store.sync({ activeSong: e.song, activeSlide: 0, lyricsVisible: true }))
+  channel.listen('.LyricsShown', (e: any) => store.sync({ activeSong: e.song, lyricsVisible: true, activeSlide: null }))
   channel.listen('.LyricsHidden', () => store.sync({ lyricsVisible: false }))
   channel.listen('.LyricsSlideChanged', (e: any) => {
     store.sync({ activeSlide: e.slideIndex })

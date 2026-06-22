@@ -47,11 +47,10 @@ class ControlController
         $this->state->set('lowerThirdVisible', false);
         GraphicsEvent::dispatch('LowerThirdHidden');
         $this->state->set('activeSong', $songData);
-        $this->state->set('activeSlide', 0);
+        $this->state->set('activeSlide', null);
         $this->state->set('lyricsVisible', true);
         GraphicsEvent::dispatch('LyricsShown', [
             'song' => $songData,
-            'slide' => $songData['slides'][0]['content'] ?? null,
         ]);
         return response()->json($this->state->get());
     }
@@ -74,8 +73,8 @@ class ControlController
         if (!count($slides)) {
             return response()->json($this->state->get());
         }
-        $currentSlide = $this->state->get()['activeSlide'] ?? 0;
-        $nextSlide = min($currentSlide + 1, count($slides) - 1);
+        $currentSlide = $this->state->get()['activeSlide'];
+        $nextSlide = $currentSlide === null ? 0 : min($currentSlide + 1, count($slides) - 1);
         $this->state->set('activeSlide', $nextSlide);
         GraphicsEvent::dispatch('LyricsSlideChanged', [
             'slide' => $slides[$nextSlide]['content'] ?? null,
@@ -106,8 +105,8 @@ class ControlController
         if (!count($slides)) {
             return response()->json($this->state->get());
         }
-        $currentSlide = $this->state->get()['activeSlide'] ?? 0;
-        $prevSlide = max(0, $currentSlide - 1);
+        $currentSlide = $this->state->get()['activeSlide'];
+        $prevSlide = $currentSlide === null ? 0 : max(0, $currentSlide - 1);
         $this->state->set('activeSlide', $prevSlide);
         GraphicsEvent::dispatch('LyricsSlideChanged', [
             'slide' => $slides[$prevSlide]['content'] ?? null,

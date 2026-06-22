@@ -5,6 +5,7 @@ import { useGraphicsStore } from '@/Stores/graphics'
 const store = useGraphicsStore()
 const visible = computed(() => store.state.lyricsVisible)
 const song = computed(() => store.state.activeSong)
+const hasSlide = computed(() => store.state.activeSlide !== null && song.value?.slides[store.state.activeSlide!] != null)
 const currentSlide = computed(() => {
   if (!song.value || store.state.activeSlide === null) return null
   return song.value.slides[store.state.activeSlide]
@@ -13,12 +14,13 @@ const currentSlide = computed(() => {
 
 <template>
   <Transition name="lt">
-    <div v-if="visible && song && currentSlide" class="lyrics-bar">
+    <div v-if="visible && song" :class="['lyrics-bar', hasSlide ? 'lyrics-bar--expanded' : 'lyrics-bar--compact']">
       <div class="lyrics-info">
         <h1 class="lyrics-title">{{ song.title }}</h1>
         <p v-if="song.artist" class="lyrics-artist">{{ song.artist }}</p>
       </div>
-      <div class="lyrics-text">
+      <div v-if="hasSlide && currentSlide" class="lyrics-text">
+        <p v-if="currentSlide.section_label" class="lyrics-section-label">{{ currentSlide.section_label }}</p>
         <p class="lyrics-content">{{ currentSlide.content }}</p>
       </div>
     </div>
@@ -30,9 +32,7 @@ const currentSlide = computed(() => {
   position: fixed;
   bottom: 50px;
   left: 60px;
-  width: 92%;
   display: flex;
-  height: 12%;
   background: rgba(10, 15, 25, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -41,6 +41,15 @@ const currentSlide = computed(() => {
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2);
   z-index: 90;
+  min-width: 400px;
+}
+
+.lyrics-bar--compact {
+  width: auto;
+}
+
+.lyrics-bar--expanded {
+  width: 92%;
 }
 
 .lyrics-info {
@@ -54,7 +63,7 @@ const currentSlide = computed(() => {
 
 .lyrics-title {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 22px;
+  font-size: 36px;
   font-weight: 700;
   color: #fff;
   margin: 0;
@@ -65,7 +74,7 @@ const currentSlide = computed(() => {
 
 .lyrics-artist {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 500;
   color: #D4AF37;
   margin: 4px 0 0;
@@ -78,19 +87,32 @@ const currentSlide = computed(() => {
   flex: 1;
   padding: 18px 24px;
   display: flex;
-  align-items: center;
-  justify-content: right;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.lyrics-section-label {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #D4AF37;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 6px 0;
+  line-height: 1;
 }
 
 .lyrics-content {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 600;
   color: #fff;
   margin: 0;
   line-height: 1.4;
   overflow-wrap: break-word;
   word-break: break-word;
+  text-align: right;
 }
 
 .lt-enter-active { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }

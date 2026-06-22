@@ -231,7 +231,7 @@ onMounted(async () => {
   channel = echo.channel('graphics')
   channel.listen('.LowerThirdShown', (e: any) => store.sync({ activeLowerThird: e.lowerThird, lowerThirdVisible: true }))
   channel.listen('.LowerThirdHidden', () => store.sync({ lowerThirdVisible: false }))
-  channel.listen('.LyricsShown', (e: any) => store.sync({ activeSong: e.song, activeSlide: 0, lyricsVisible: true }))
+  channel.listen('.LyricsShown', (e: any) => store.sync({ activeSong: e.song, lyricsVisible: true, activeSlide: null }))
   channel.listen('.LyricsHidden', () => store.sync({ lyricsVisible: false }))
   channel.listen('.LyricsSlideChanged', (e: any) => store.sync({ activeSlide: e.slideIndex }))
   channel.listen('.ScriptureShown', (e: any) => store.sync({ activeScripture: e.scripture, scriptureVisible: true }))
@@ -355,13 +355,16 @@ onUnmounted(() => {
                   <button @click="closeSongPreview" class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors text-lg font-bold">&times;</button>
                 </div>
               </div>
-              <div class="p-6 max-h-[500px] overflow-y-auto space-y-4">
-                <div v-for="(slide, i) in selectedSong.slides" :key="slide.id" @click="goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer', store.state.lyricsVisible && store.state.activeSong?.id === selectedSong.id && store.state.activeSlide === i ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
-                  <div class="flex items-center justify-between mb-2">
-                    <p class="text-xs text-gray-500">Slide {{ i + 1 }} / {{ selectedSong.slides.length }}</p>
-                    <span v-if="store.state.lyricsVisible && store.state.activeSong?.id === selectedSong.id && store.state.activeSlide === i" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
+              <div class="p-6 max-h-[500px] overflow-y-auto">
+                <div v-for="(slide, i) in selectedSong.slides" :key="slide.id">
+                  <div v-if="slide.section_label && (!i || selectedSong.slides[i - 1].section_label !== slide.section_label)" class="text-xs font-semibold uppercase tracking-wider text-amber-400 pb-1 mb-3 mt-4 border-b border-gray-700">{{ slide.section_label }}</div>
+                  <div @click="goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer mb-3', store.state.lyricsVisible && store.state.activeSong?.id === selectedSong.id && store.state.activeSlide === i ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
+                    <div class="flex items-center justify-between mb-2">
+                      <p class="text-xs text-gray-500">Slide {{ i + 1 }} / {{ selectedSong.slides.length }}</p>
+                      <span v-if="store.state.lyricsVisible && store.state.activeSong?.id === selectedSong.id && store.state.activeSlide === i" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
+                    </div>
+                    <p class="text-white text-base leading-relaxed whitespace-pre-wrap">{{ slide.content }}</p>
                   </div>
-                  <p class="text-white text-base leading-relaxed whitespace-pre-wrap">{{ slide.content }}</p>
                 </div>
               </div>
             </div>

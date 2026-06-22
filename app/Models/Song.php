@@ -21,22 +21,47 @@ class Song extends Model
         return $this->hasMany(SongSlide::class)->orderBy('slide_order');
     }
 
+    private static function getSectionHeader(string $line): ?string
+    {
+        if (preg_match('/^(verse|refrain|chorus|coda|bridge|intro|outro|pre-chorus|interlude|ending|tag|solo)\s*\d*$/i', trim($line))) {
+            return trim($line);
+        }
+        return null;
+    }
+
     public static function parseLyricsToSlides(?string $lyrics): array
     {
         if (!$lyrics || !trim($lyrics)) {
             return [];
         }
         $lines = explode("\n", str_replace(["\r\n", "\r"], "\n", $lyrics));
+        $buffer = [];
+        $currentSection = null;
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+            $header = self::getSectionHeader($trimmed);
+            if ($header !== null) {
+                $currentSection = $header;
+                continue;
+            }
+            $buffer[] = ['text' => $trimmed, 'section' => $currentSection];
+        }
         $slides = [];
         $index = 0;
-        for ($i = 0; $i < count($lines); $i += 2) {
-            $content = trim($lines[$i]);
-            if (isset($lines[$i + 1])) {
-                $content .= "\n" . trim($lines[$i + 1]);
+        for ($i = 0; $i < count($buffer); $i += 2) {
+            $content = $buffer[$i]['text'];
+            $section = $buffer[$i]['section'];
+            if (isset($buffer[$i + 1])) {
+                $content .= "\n" . $buffer[$i + 1]['text'];
             }
-            if (trim($content)) {
-                $slides[] = ['slide_order' => $index++, 'content' => $content];
+            $slide = ['slide_order' => $index++, 'content' => $content];
+            if ($section !== null) {
+                $slide['section_label'] = $section;
             }
+            $slides[] = $slide;
         }
         return $slides;
     }

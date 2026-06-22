@@ -12,6 +12,7 @@ export interface SongSlide {
   id: number
   slide_order: number
   content: string
+  section_label?: string | null
 }
 
 export interface Song {
@@ -25,17 +26,31 @@ export interface Song {
   updated_at: string
 }
 
+const SECTION_HEADER_RE = /^(verse|refrain|chorus|coda|bridge|intro|outro|pre-chorus|interlude|ending|tag|solo)\s*\d*$/i
+
 export function parseLyricsToSlides(lyrics: string | null): SongSlide[] {
   if (!lyrics) return []
   const lines = lyrics.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')
+  const buffer: { text: string; section: string | null }[] = []
+  let currentSection: string | null = null
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    if (SECTION_HEADER_RE.test(trimmed)) {
+      currentSection = trimmed
+      continue
+    }
+    buffer.push({ text: trimmed, section: currentSection })
+  }
   const slides: SongSlide[] = []
   let index = 0
-  for (let i = 0; i < lines.length; i += 2) {
-    let content = lines[i].trim()
-    if (lines[i + 1] !== undefined) content += '\n' + lines[i + 1].trim()
-    if (content.trim()) {
-      slides.push({ id: 0, slide_order: index++, content })
-    }
+  for (let i = 0; i < buffer.length; i += 2) {
+    let content = buffer[i].text
+    const section = buffer[i].section
+    if (buffer[i + 1] !== undefined) content += '\n' + buffer[i + 1].text
+    const slide: SongSlide = { id: 0, slide_order: index++, content }
+    if (section) slide.section_label = section
+    slides.push(slide)
   }
   return slides
 }
