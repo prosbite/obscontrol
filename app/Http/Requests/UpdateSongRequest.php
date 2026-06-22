@@ -14,9 +14,7 @@ class UpdateSongRequest extends FormRequest
             'title' => ['sometimes', 'string', 'max:255'],
             'artist' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:255'],
-            'slides' => ['nullable', 'array'],
-            'slides.*.slide_order' => ['required', 'integer', 'min:0'],
-            'slides.*.content' => ['required', 'string'],
+            'lyrics' => ['nullable', 'string'],
         ];
     }
 }

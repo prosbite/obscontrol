@@ -14,7 +14,7 @@ class UpdateLowerThirdRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'string', 'max:255'],
-            'template' => ['nullable', 'string', 'in:slide_left,slide_right,fade,zoom'],
+            'template' => ['nullable', 'string', 'in:classic,minimal,banner'],
         ];
     }
 }

@@ -23,8 +23,10 @@ class ControlController
     {
         $data = $request->validate(['id' => 'required|exists:lower_thirds,id']);
         $lowerThird = LowerThird::findOrFail($data['id']);
-        $this->state->set('activeLowerThird', $lowerThird->toArray());
+        $this->state->set('lyricsVisible', false);
+        GraphicsEvent::dispatch('LyricsHidden');
         $this->state->set('lowerThirdVisible', true);
+        $this->state->set('activeLowerThird', $lowerThird->toArray());
         GraphicsEvent::dispatch('LowerThirdShown', ['lowerThird' => $lowerThird]);
         return response()->json($this->state->get());
     }
@@ -39,13 +41,17 @@ class ControlController
     public function showLyrics(Request $request): JsonResponse
     {
         $data = $request->validate(['song_id' => 'required|exists:songs,id']);
-        $song = Song::with('slides')->findOrFail($data['song_id']);
-        $this->state->set('activeSong', $song->toArray());
+        $song = Song::findOrFail($data['song_id']);
+        $songData = $song->toArray();
+        $songData['slides'] = Song::parseLyricsToSlides($song->lyrics);
+        $this->state->set('lowerThirdVisible', false);
+        GraphicsEvent::dispatch('LowerThirdHidden');
+        $this->state->set('activeSong', $songData);
         $this->state->set('activeSlide', 0);
         $this->state->set('lyricsVisible', true);
         GraphicsEvent::dispatch('LyricsShown', [
-            'song' => $song,
-            'slide' => $song->slides->first()?->content,
+            'song' => $songData,
+            'slide' => $songData['slides'][0]['content'] ?? null,
         ]);
         return response()->json($this->state->get());
     }
@@ -57,33 +63,54 @@ class ControlController
         return response()->json($this->state->get());
     }
 
+    private function slidesFromState(): array
+    {
+        return $this->state->get()['activeSong']['slides'] ?? [];
+    }
+
     public function nextSlide(): JsonResponse
     {
-        $song = Song::with('slides')->find($this->state->get()['activeSong']['id'] ?? 0);
-        if (!$song || !$song->slides->count()) {
+        $slides = $this->slidesFromState();
+        if (!count($slides)) {
             return response()->json($this->state->get());
         }
         $currentSlide = $this->state->get()['activeSlide'] ?? 0;
-        $nextSlide = min($currentSlide + 1, $song->slides->count() - 1);
+        $nextSlide = min($currentSlide + 1, count($slides) - 1);
         $this->state->set('activeSlide', $nextSlide);
         GraphicsEvent::dispatch('LyricsSlideChanged', [
-            'slide' => $song->slides->get($nextSlide)?->content,
+            'slide' => $slides[$nextSlide]['content'] ?? null,
             'slideIndex' => $nextSlide,
+        ]);
+        return response()->json($this->state->get());
+    }
+
+    public function goToSlide(Request $request): JsonResponse
+    {
+        $data = $request->validate(['slide_index' => 'required|integer|min:0']);
+        $slides = $this->slidesFromState();
+        if (!count($slides)) {
+            return response()->json($this->state->get());
+        }
+        $index = min(max(0, $data['slide_index']), count($slides) - 1);
+        $this->state->set('activeSlide', $index);
+        GraphicsEvent::dispatch('LyricsSlideChanged', [
+            'slide' => $slides[$index]['content'] ?? null,
+            'slideIndex' => $index,
         ]);
         return response()->json($this->state->get());
     }
 
     public function previousSlide(): JsonResponse
     {
-        $song = Song::with('slides')->find($this->state->get()['activeSong']['id'] ?? 0);
-        if (!$song || !$song->slides->count()) {
+        $slides = $this->slidesFromState();
+        if (!count($slides)) {
             return response()->json($this->state->get());
         }
         $currentSlide = $this->state->get()['activeSlide'] ?? 0;
         $prevSlide = max(0, $currentSlide - 1);
         $this->state->set('activeSlide', $prevSlide);
         GraphicsEvent::dispatch('LyricsSlideChanged', [
-            'slide' => $song->slides->get($prevSlide)?->content,
+            'slide' => $slides[$prevSlide]['content'] ?? null,
             'slideIndex' => $prevSlide,
         ]);
         return response()->json($this->state->get());

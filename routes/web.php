@@ -19,7 +19,7 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('/display/main', function () {
-    return view('display');
+    return Inertia::render('Display/Main');
 })->name('display.main');
 
 Route::middleware('auth')->group(function () {

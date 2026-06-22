@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
+import { Head } from '@inertiajs/vue3'
 import echo from '@/echo'
 import { useGraphicsStore } from '@/Stores/graphics'
-import LowerThirdOverlay from './LowerThirdOverlay.vue'
-import LyricsOverlay from './LyricsOverlay.vue'
-import ScriptureOverlay from './ScriptureOverlay.vue'
-import CountdownTimer from './CountdownTimer.vue'
-import AnnouncementOverlay from './AnnouncementOverlay.vue'
+import LowerThirdOverlay from '@/Display/LowerThirdOverlay.vue'
+import LyricsOverlay from '@/Display/LyricsOverlay.vue'
+import ScriptureOverlay from '@/Display/ScriptureOverlay.vue'
+import CountdownTimer from '@/Display/CountdownTimer.vue'
+import AnnouncementOverlay from '@/Display/AnnouncementOverlay.vue'
 
 const store = useGraphicsStore()
 let channel: any = null
+let styleEl: HTMLStyleElement | null = null
 
 onMounted(async () => {
+  styleEl = document.createElement('style')
+  styleEl.textContent = `html,body{margin:0!important;padding:0!important;background:transparent!important;overflow:hidden!important;width:1920px;height:1080px}`
+  document.head.appendChild(styleEl)
+
   const res = await fetch('/api/control/state')
   if (res.ok) {
     const data = await res.json()
@@ -40,10 +46,13 @@ onMounted(async () => {
 
 onUnmounted(() => {
   channel?.leave('graphics')
+  styleEl?.remove()
 })
 </script>
 
 <template>
+  <Head title="Display" />
+
   <div class="display-container">
     <LowerThirdOverlay />
     <LyricsOverlay />

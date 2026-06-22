@@ -24,6 +24,7 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::post('lyrics/show', [ControlController::class, 'showLyrics']);
         Route::post('lyrics/hide', [ControlController::class, 'hideLyrics']);
         Route::post('lyrics/next', [ControlController::class, 'nextSlide']);
+        Route::post('lyrics/go-to', [ControlController::class, 'goToSlide']);
         Route::post('lyrics/previous', [ControlController::class, 'previousSlide']);
         Route::post('scripture/show', [ControlController::class, 'showScripture']);
         Route::post('scripture/hide', [ControlController::class, 'hideScripture']);

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('title');
             $table->string('artist')->nullable();
             $table->string('category')->nullable();
+            $table->text('lyrics')->nullable();
             $table->timestamps();
         });
     }

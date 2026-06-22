@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('subtitle')->nullable();
             $table->string('image')->nullable();
-            $table->string('template')->default('slide_left');
+            $table->string('template')->default('classic');
             $table->timestamps();
         });
     }

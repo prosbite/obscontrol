@@ -15,31 +15,24 @@ class SongController
 {
     public function index(): JsonResource
     {
-        return SongResource::collection(Song::with('slides')->orderBy('title')->get());
+        return SongResource::collection(Song::orderBy('title')->get());
     }
 
     public function store(StoreSongRequest $request): JsonResource
     {
         $song = Song::create($request->validated());
-        if ($slides = $request->validated()['slides'] ?? []) {
-            $song->slides()->createMany($slides);
-        }
-        return new SongResource($song->load('slides'));
+        return new SongResource($song);
     }
 
     public function show(Song $song): JsonResource
     {
-        return new SongResource($song->load('slides'));
+        return new SongResource($song);
     }
 
     public function update(UpdateSongRequest $request, Song $song): JsonResource
     {
         $song->update($request->validated());
-        if ($request->has('slides')) {
-            $song->slides()->delete();
-            $song->slides()->createMany($request->validated()['slides']);
-        }
-        return new SongResource($song->load('slides'));
+        return new SongResource($song);
     }
 
     public function destroy(Song $song): JsonResponse
