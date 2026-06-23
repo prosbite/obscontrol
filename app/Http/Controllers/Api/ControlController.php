@@ -226,4 +226,5 @@ class ControlController
         GraphicsEvent::dispatch('AnnouncementShown', ['announcement' => $announcement]);
         return response()->json($this->state->get());
     }
+
 }

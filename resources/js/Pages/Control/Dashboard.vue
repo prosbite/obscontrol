@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Head } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import MainLayout from '@/Components/sidebar/Layout/MainLayout.vue'
 import echo from '@/echo'
 import { useGraphicsStore } from '@/Stores/graphics'
-import type { LowerThird, Song, Scripture, Announcement } from '@/types/graphics'
-import { parseLyricsToSlides } from '@/types/graphics'
+import type { LowerThird, Song, Scripture, Announcement, QueueSet, QueueItemResource } from '@/types/graphics'
 import axios from 'axios'
 import Modal from '@/Components/sidebar/UI/Modal.vue'
 import LowerThirdPreview from '@/Components/sidebar/LowerThirds/LowerThirdPreview.vue'
@@ -22,7 +21,7 @@ const songs = ref<Song[]>([])
 const scriptures = ref<Scripture[]>([])
 const announcements = ref<Announcement[]>([])
 const searchQuery = ref('')
-const activeTab = ref<'lowerthirds' | 'lyrics' | 'scriptures' | 'timer' | 'announcements'>('lowerthirds')
+const activeTab = ref<'lowerthirds' | 'lyrics' | 'scriptures' | 'timer' | 'announcements' | 'queue'>('lowerthirds')
 const newTimerDuration = ref(600)
 const selectedSong = ref<Song | null>(null)
 const songModal = ref(false)
@@ -33,6 +32,149 @@ const ltModal = ref(false)
 const selectDesign = ref(false)
 const ltForm = ref<{ id?: number; name: string; subtitle: string; image: string; template: string }>({ name: '', subtitle: '', image: '', template: 'classic' })
 const isEditing = ref(false)
+
+const queues = ref<QueueSet[]>([])
+const selectedQueueId = ref<number | null>(null)
+const queueItems = ref<QueueItemResource[]>([])
+
+const currentQueueIndex = ref(-1)
+
+async function fetchQueues() {
+  try {
+    const { data } = await axios.get('/api/queues')
+    queues.value = data.data
+  } catch (e) {
+    console.error('Failed to fetch queues', e)
+  }
+}
+
+async function selectQueue(id: number) {
+  selectedQueueId.value = id
+  currentQueueIndex.value = -1
+  try {
+    const { data } = await axios.get(`/api/queues/${id}`)
+    queueItems.value = data.data.items ?? []
+  } catch (e) {
+    console.error('Failed to fetch queue items', e)
+  }
+}
+
+async function createQueue() {
+  const name = prompt('Queue name:')
+  if (!name) return
+  try {
+    const { data } = await axios.post('/api/queues', { name })
+    queues.value.push(data.data)
+    selectedQueueId.value = data.data.id
+    await selectQueue(data.data.id)
+  } catch (e) {
+    console.error('Failed to create queue', e)
+  }
+}
+
+async function deleteQueue(id: number) {
+  if (!confirm('Delete this queue and all its items?')) return
+  try {
+    await axios.delete(`/api/queues/${id}`)
+    queues.value = queues.value.filter(q => q.id !== id)
+    if (selectedQueueId.value === id) {
+      selectedQueueId.value = null
+      queueItems.value = []
+    }
+  } catch (e) {
+    console.error('Failed to delete queue', e)
+  }
+}
+
+async function renameQueue() {
+  if (!selectedQueueId.value) return
+  const name = prompt('New name:')
+  if (!name) return
+  try {
+    await axios.put(`/api/queues/${selectedQueueId.value}`, { name })
+    const idx = queues.value.findIndex(q => q.id === selectedQueueId.value)
+    if (idx !== -1) queues.value[idx].name = name
+  } catch (e) {
+    console.error('Failed to rename queue', e)
+  }
+}
+
+async function addToQueueApi(type: 'lowerthird' | 'lyrics', item: LowerThird | Song) {
+  let queueId = selectedQueueId.value
+  if (!queueId) {
+    const name = prompt('Queue name:')
+    if (!name) return
+    const { data } = await axios.post('/api/queues', { name })
+    queues.value.push(data.data)
+    queueId = data.data.id
+    selectedQueueId.value = queueId
+  }
+  const sourceId = type === 'lowerthird' ? (item as LowerThird).id : (item as Song).id
+  const name = type === 'lowerthird' ? (item as LowerThird).name : (item as Song).title || ''
+  const res = await axios.post(`/api/queues/${queueId}/items`, { name, type, source_id: sourceId })
+  if (selectedQueueId.value === queueId) {
+    queueItems.value.push(res.data.data)
+  }
+}
+
+async function removeFromQueueApi(itemId: string) {
+  if (!selectedQueueId.value) return
+  try {
+    await axios.delete(`/api/queues/${selectedQueueId.value}/items/${itemId}`)
+    queueItems.value = queueItems.value.filter(i => i.id !== itemId)
+    for (let idx = 0; idx < queueItems.value.length; idx++) {
+      queueItems.value[idx].position = idx
+    }
+  } catch (e) {
+    console.error('Failed to remove from queue', e)
+  }
+}
+
+async function renameQueueItem(itemId: string) {
+  const name = prompt('New display name:')
+  if (!name || !selectedQueueId.value) return
+  try {
+    await axios.put(`/api/queues/${selectedQueueId.value}/items/${itemId}`, { name })
+    const idx = queueItems.value.findIndex(i => i.id === itemId)
+    if (idx !== -1) queueItems.value[idx].name = name
+  } catch (e) {
+    console.error('Failed to rename item', e)
+  }
+}
+
+async function moveQueueItem(itemId: string, direction: 'up' | 'down') {
+  if (!selectedQueueId.value) return
+  try {
+    const { data } = await axios.patch(`/api/queues/${selectedQueueId.value}/items/${itemId}/move`, { direction })
+    queueItems.value = data.data.items ?? []
+  } catch (e) {
+    console.error('Failed to move item', e)
+  }
+}
+
+async function showQueueItem(item: QueueItemResource) {
+  const idx = queueItems.value.findIndex(i => i.id === item.id)
+  if (idx !== -1) currentQueueIndex.value = idx
+  if (item.type === 'lowerthird') {
+    await showLowerThird(item.source_id)
+  } else {
+    await showSong(item.source_id)
+  }
+}
+
+async function playNext() {
+  if (currentQueueIndex.value < queueItems.value.length - 1) {
+    const next = queueItems.value[currentQueueIndex.value + 1]
+    showQueueItem(next)
+  }
+}
+
+async function playPrev() {
+  if (currentQueueIndex.value > 0) {
+    const prev = queueItems.value[currentQueueIndex.value - 1]
+    showQueueItem(prev)
+  }
+}
 
 let channel: any = null
 
@@ -106,6 +248,7 @@ async function fetchAll() {
     songs.value = songRes.data.data
     scriptures.value = scRes.data.data
     announcements.value = annRes.data.data
+    await fetchQueues()
   } catch (e) {
     console.error('Failed to fetch data', e)
   }
@@ -253,7 +396,7 @@ onUnmounted(() => {
 
 <template>
   <Head title="Graphics Control" />
-  <AuthenticatedLayout>
+  <MainLayout>
     <div class="p-6">
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div class="lg:col-span-1 space-y-4">
@@ -298,8 +441,8 @@ onUnmounted(() => {
 
         <div class="lg:col-span-3 space-y-4">
           <div class="flex gap-2 border-b border-gray-800 pb-2">
-            <button v-for="tab in ['lowerthirds', 'lyrics', 'scriptures', 'timer', 'announcements']" :key="tab" @click="activeTab = tab" :class="['px-4 py-2 text-sm rounded-t-lg transition-colors', activeTab === tab ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200']">
-              {{ tab.charAt(0).toUpperCase() + tab.slice(1) }}
+            <button v-for="tab in ['lowerthirds', 'lyrics', 'scriptures', 'timer', 'announcements', 'queue']" :key="tab" @click="activeTab = tab" :class="['px-4 py-2 text-sm rounded-t-lg transition-colors', activeTab === tab ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200']">
+              {{ tab === 'lowerthirds' ? 'Lower Thirds' : tab.charAt(0).toUpperCase() + tab.slice(1) }}
             </button>
           </div>
 
@@ -322,8 +465,9 @@ onUnmounted(() => {
                 </div>
               </div>
               <div class="px-4 pb-4 flex gap-2">
-                <button @click="showLowerThird(lt.id)" class="flex-1 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Show</button>
-                <button @click="deleteLt(lt.id)" class="py-2 px-4 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Delete</button>
+                <button @click="showLowerThird(lt.id)" class="py-2 px-5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Show</button>
+                <button @click="addToQueueApi('lowerthird', lt)" class="shrink-0 py-2 px-3 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors">Queue</button>
+                <button @click="deleteLt(lt.id)" class="shrink-0 py-2 px-3 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Delete</button>
               </div>
             </div>
           </div>
@@ -338,8 +482,9 @@ onUnmounted(() => {
                 </div>
                 <div class="px-4 pb-4 flex gap-2">
                   <button @click="selectSong(song)" class="flex-1 py-2 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors">View</button>
-                  <button @click="openEditSong(song)" class="py-2 px-4 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">Edit</button>
-                  <button @click="deleteSong(song.id)" class="py-2 px-4 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Del</button>
+                  <button @click="openEditSong(song)" class="shrink-0 py-2 px-3 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">Edit</button>
+                  <button @click="addToQueueApi('lyrics', song)" class="shrink-0 py-2 px-3 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors">Queue</button>
+                  <button @click="deleteSong(song.id)" class="shrink-0 py-2 px-3 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Del</button>
                 </div>
               </div>
             </div>
@@ -352,6 +497,7 @@ onUnmounted(() => {
                 </div>
                 <div class="flex items-center gap-2">
                   <button @click.prevent="showSong(selectedSong.id)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Send to Display</button>
+                  <button @click.prevent="addToQueueApi('lyrics', selectedSong)" class="px-4 py-2 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors">Add to Queue</button>
                   <button @click="closeSongPreview" class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors text-lg font-bold">&times;</button>
                 </div>
               </div>
@@ -396,6 +542,61 @@ onUnmounted(() => {
             <div v-for="ann in announcements" :key="ann.id" class="bg-gray-900 rounded-xl p-4 border border-gray-800 cursor-pointer" @click="showAnnouncement(ann.id)">
               <h4 class="font-semibold text-white">{{ ann.title }}</h4>
               <p class="text-sm text-gray-400 line-clamp-2">{{ ann.content }}</p>
+            </div>
+          </div>
+
+          <div v-if="activeTab === 'queue'" class="space-y-3">
+            <div class="flex gap-2 items-center">
+              <select
+                :value="selectedQueueId ?? ''"
+                @change="selectQueue(Number(($event.target as HTMLSelectElement).value))"
+                class="flex-1 px-4 py-2 bg-gray-900 border border-gray-800 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+              >
+                <option value="" disabled>Select a queue...</option>
+                <option v-for="q in queues" :key="q.id" :value="q.id">{{ q.name }}</option>
+              </select>
+              <button @click="createQueue" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors">+ New</button>
+              <button @click="renameQueue" :disabled="!selectedQueueId" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-lg transition-colors disabled:opacity-50">Rename</button>
+              <button @click="selectedQueueId && deleteQueue(selectedQueueId)" :disabled="!selectedQueueId" class="px-3 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 text-sm rounded-lg transition-colors disabled:opacity-50">Delete</button>
+            </div>
+
+            <div v-if="!selectedQueueId" class="text-center text-gray-500 py-12">
+              <p class="text-lg">Select or create a queue</p>
+            </div>
+
+            <div v-else-if="!queueItems.length" class="text-center text-gray-500 py-12">
+              <p class="text-lg">Queue is empty</p>
+              <p class="text-sm mt-1">Add items from Lower Thirds or Lyrics tabs</p>
+            </div>
+
+            <div v-else class="flex items-center gap-2 mb-4 p-3 bg-gray-900 rounded-xl border border-gray-800">
+              <button @click="playPrev" :disabled="currentQueueIndex <= 0" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-gray-300 text-lg rounded-lg transition-colors">&#9664;</button>
+              <span class="flex-1 text-center text-sm text-gray-400">
+                <template v-if="currentQueueIndex >= 0">
+                  Now playing: <span class="text-white font-medium">{{ queueItems[currentQueueIndex].name }}</span>
+                </template>
+                <template v-else>Select an item to display</template>
+              </span>
+              <button @click="playNext" :disabled="currentQueueIndex >= queueItems.length - 1" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-gray-300 text-lg rounded-lg transition-colors">&#9654;</button>
+            </div>
+
+            <div v-for="(item, idx) in queueItems" :key="item.id" :class="['rounded-xl border overflow-hidden transition-colors', idx === currentQueueIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-gray-900 border-gray-800']">
+              <div class="p-4 flex items-center gap-4">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-0.5">
+                    <span class="text-xs font-medium text-indigo-400 uppercase tracking-wider">{{ item.type === 'lowerthird' ? 'Lower Third' : 'Song' }}</span>
+                    <span v-if="idx === currentQueueIndex" class="text-xs text-green-400">&#9679; Live</span>
+                  </div>
+                  <h4 class="font-semibold text-white truncate text-lg">{{ item.name }}</h4>
+                </div>
+                <div class="flex gap-2 shrink-0">
+                  <button @click="showQueueItem(item)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Show</button>
+                  <button @click="moveQueueItem(item.id, 'up')" :disabled="item.position === 0" class="px-2 py-2 text-sm bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-gray-300 rounded-lg transition-colors">&#9650;</button>
+                  <button @click="moveQueueItem(item.id, 'down')" :disabled="item.position === queueItems.length - 1" class="px-2 py-2 text-sm bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-gray-300 rounded-lg transition-colors">&#9660;</button>
+                  <button @click="renameQueueItem(item.id)" class="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">Edit</button>
+                  <button @click="removeFromQueueApi(item.id)" class="px-4 py-2 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Remove</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -470,5 +671,5 @@ onUnmounted(() => {
         </div>
       </form>
     </Modal>
-  </AuthenticatedLayout>
+  </MainLayout>
 </template>
