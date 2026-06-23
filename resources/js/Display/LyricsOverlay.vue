@@ -14,107 +14,20 @@ const currentSlide = computed(() => {
 
 <template>
   <Transition name="lt">
-    <div v-if="visible && song" :class="['lyrics-bar', hasSlide ? 'lyrics-bar--expanded' : 'lyrics-bar--compact']">
-      <div class="lyrics-info">
-        <h1 class="lyrics-title">{{ song.title }}</h1>
-        <p v-if="song.artist" class="lyrics-artist">{{ song.artist }}</p>
+    <div v-if="visible && song" :class="['fixed bottom-[50px] left-[60px] flex rounded-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.35),0_2px_8px_rgba(0,0,0,0.2)] z-[90] min-w-[400px] bg-[rgba(10,15,25,0.88)] backdrop-blur-xl border-l-[5px] border-l-[#D4AF37]', hasSlide ? 'w-[92%]' : 'w-auto']">
+      <div class="flex-[0_0_280px] px-16 py-3 flex flex-col justify-center rounded-r-xl border-r-[#D4AF37] border-r-[5px] bg-inherit">
+        <h1 class="text-[2vw] font-bold text-white m-0 whitespace-nowrap overflow-hidden text-ellipsis">{{ song.title }}</h1>
+        <p v-if="song.artist" class="text-[1.5vw] font-medium text-[#D4AF37] whitespace-nowrap overflow-hidden text-ellipsis">{{ song.artist }}</p>
       </div>
-      <div v-if="hasSlide && currentSlide" class="lyrics-text">
-        <p v-if="currentSlide.section_label" class="lyrics-section-label">{{ currentSlide.section_label }}</p>
-        <p class="lyrics-content">{{ currentSlide.content }}</p>
+      <div v-if="hasSlide && currentSlide" class="flex-1 px-6 py-3 flex flex-col items-end justify-center">
+        <p v-if="currentSlide.section_label" class="text-[1vw] font-semibold uppercase text-[#D4AF37] tracking-wider m-0 mb-1.5 leading-none">{{ currentSlide.section_label }}</p>
+        <p class="text-[1.7vw] text-white m-0 leading-[1.4] break-words text-right">{{ currentSlide.content }}</p>
       </div>
     </div>
   </Transition>
 </template>
 
 <style scoped>
-.lyrics-bar {
-  position: fixed;
-  bottom: 50px;
-  left: 60px;
-  display: flex;
-  background: rgba(10, 15, 25, 0.88);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-left: 5px solid #D4AF37;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2);
-  z-index: 90;
-  min-width: 400px;
-}
-
-.lyrics-bar--compact {
-  width: auto;
-}
-
-.lyrics-bar--expanded {
-  width: 92%;
-}
-
-.lyrics-info {
-  flex: 0 0 280px;
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  border-right: 1px solid rgba(255,255,255,0.08);
-}
-
-.lyrics-title {
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 36px;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lyrics-artist {
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 20px;
-  font-weight: 500;
-  color: #D4AF37;
-  margin: 4px 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lyrics-text {
-  flex: 1;
-  padding: 18px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.lyrics-section-label {
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  color: #D4AF37;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin: 0 0 6px 0;
-  line-height: 1;
-}
-
-.lyrics-content {
-  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 32px;
-  font-weight: 600;
-  color: #fff;
-  margin: 0;
-  line-height: 1.4;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  text-align: right;
-}
-
 .lt-enter-active { transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
 .lt-leave-active { transition: all 0.3s ease-in; }
 .lt-enter-from { transform: translateX(-120%); opacity: 0; }

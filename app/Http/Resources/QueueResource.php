@@ -17,8 +17,8 @@ class QueueResource extends JsonResource
             'items' => array_map(fn (array $item) => [
                 'id' => $item['id'],
                 'name' => $item['name'],
-                'type' => $item['type'],
-                'source_id' => $item['source_id'],
+                'type' => $item['type'] ?? ($item['queue']['type'] ?? null),
+                'source_id' => $item['source_id'] ?? ($item['queue']['item_id'] ?? $item['queue']['song_id'] ?? null),
                 'position' => $item['position'],
                 'created_at' => $item['created_at'] ?? $this->created_at,
             ], $this->items ?? []),
