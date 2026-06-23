@@ -26,6 +26,7 @@
         "pusher-js": "^8.5.0",
         "typescript": "^6.0.3",
         "vue-router": "^4.6.4",
+        "vue-toastification": "^2.0.0-rc.5",
         "vue-tsc": "^3.3.5"
     }
 }

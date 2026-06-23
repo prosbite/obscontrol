@@ -29,9 +29,9 @@ defineProps<{
 }
 .minimal-subtitle {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 20px;
+  font-size: 1.5vw;
   font-weight: 500;
-  color: #aaa;
+  color: #D4AF37;
   margin: 4px 0 0;
   white-space: nowrap;
   overflow: hidden;

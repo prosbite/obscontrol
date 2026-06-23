@@ -73,6 +73,23 @@ export interface Announcement {
   updated_at: string
 }
 
+export interface QueueItemResource {
+  id: string
+  name: string
+  type: 'lowerthird' | 'lyrics'
+  source_id: number
+  position: number
+  created_at: string
+}
+
+export interface QueueSet {
+  id: number
+  name: string
+  items?: QueueItemResource[]
+  created_at: string
+  updated_at: string
+}
+
 export interface GraphicsState {
   activeLowerThird: LowerThird | null
   activeSong: Song | null

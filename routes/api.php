@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\ControlController;
 use App\Http\Controllers\Api\LowerThirdController;
+use App\Http\Controllers\Api\QueueController;
 use App\Http\Controllers\Api\ScriptureController;
 use App\Http\Controllers\Api\SongController;
 use App\Services\GraphicsState;
@@ -17,6 +18,12 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::apiResource('songs', SongController::class);
     Route::apiResource('scriptures', ScriptureController::class);
     Route::apiResource('announcements', AnnouncementController::class);
+
+    Route::apiResource('queues', QueueController::class);
+    Route::post('queues/{queue}/items', [QueueController::class, 'addItem']);
+    Route::put('queues/{queue}/items/{item}', [QueueController::class, 'updateItem']);
+    Route::delete('queues/{queue}/items/{item}', [QueueController::class, 'removeItem']);
+    Route::patch('queues/{queue}/items/{item}/move', [QueueController::class, 'moveItem']);
 
     Route::prefix('control')->group(function () {
         Route::post('lowerthird/show', [ControlController::class, 'showLowerThird']);
