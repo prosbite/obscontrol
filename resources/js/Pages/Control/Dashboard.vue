@@ -711,7 +711,7 @@ onUnmounted(() => {
           <input v-model="songForm.artist" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500" />
         </div>
         <div>
-          <label class="block text-sm text-gray-400 mb-1">Lyrics <span class="text-gray-500">(blank lines separate slides, 2 lines per slide)</span></label>
+          <label class="block text-sm text-gray-400 mb-1">Lyrics <span class="text-gray-500">(blank lines separate slides, 1 line per slide)</span></label>
           <textarea v-model="songForm.lyrics" rows="12" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500 resize-none font-mono" placeholder="Enter full lyrics here.&#10;&#10;Each pair of lines becomes one slide."></textarea>
         </div>
         <div class="flex justify-end gap-2 pt-2">
