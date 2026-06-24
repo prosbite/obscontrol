@@ -33,7 +33,6 @@ const activeDesign = computed(() => lt.value ? designMap[lt.value.template] || C
 }
 
 .design-minimal {
-  width: 520px;
   background: rgba(10, 15, 25, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);

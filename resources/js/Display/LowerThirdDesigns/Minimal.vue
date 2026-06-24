@@ -18,14 +18,13 @@ defineProps<{
 }
 .minimal-name {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-  font-size: 38px;
+  font-size: 2vw;
   font-weight: 700;
   color: #fff;
   margin: 0;
   line-height: 1.2;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: inline-block;
 }
 .minimal-subtitle {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
@@ -34,7 +33,5 @@ defineProps<{
   color: #D4AF37;
   margin: 4px 0 0;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 </style>
