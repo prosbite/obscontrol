@@ -6,7 +6,7 @@ const emit = defineEmits<{ close: [] }>()
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="show" class="modal-backdrop" @click.self="emit('close')">
+      <div v-if="show" class="modal-backdrop">
         <div class="modal-panel">
           <div class="modal-header">
             <h3 class="modal-title">{{ title ?? '' }}</h3>

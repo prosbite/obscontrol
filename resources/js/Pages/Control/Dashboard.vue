@@ -177,7 +177,7 @@ async function showQueueItem(item: QueueItemResource) {
   if (type === 'lowerthird') {
     await showLowerThird(sourceId)
   } else {
-    await showSong(sourceId)
+    await store.showSong(sourceId)
   }
 }
 
@@ -273,28 +273,13 @@ async function fetchAll() {
   }
 }
 
-async function showLowerThird(id: number) {
-  await axios.post('/api/control/lowerthird/show', { id })
-}
-async function hideLowerThird() {
-  await axios.post('/api/control/lowerthird/hide')
-}
-async function showSong(song_id: number) {
-  await axios.post('/api/control/lyrics/show', { song_id })
-}
-async function hideLyrics() {
-  await axios.post('/api/control/lyrics/hide')
-}
-async function goToSlide(index: number) {
-  await axios.post('/api/control/lyrics/go-to', { slide_index: index })
-}
-async function nextSlide() {
-  await axios.post('/api/control/lyrics/next')
-}
-async function prevSlide() {
-  await axios.post('/api/control/lyrics/previous')
-}
-async function showScripture(id: number) {
+  async function showLowerThird(id: number) {
+    await axios.post('/api/control/lowerthird/show', { id })
+  }
+  async function hideLowerThird() {
+    await axios.post('/api/control/lowerthird/hide')
+  }
+  async function showScripture(id: number) {
   await axios.post('/api/control/scripture/show', { id })
 }
 async function hideScripture() {
@@ -380,11 +365,11 @@ function isInput(e: KeyboardEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (e.key === ' ' || e.code === 'Space') { if (isInput(e)) return; e.preventDefault(); nextSlide() }
-  if (e.key === 'ArrowLeft') { if (isInput(e)) return; e.preventDefault(); prevSlide() }
-  if (e.key === 'ArrowRight') { if (isInput(e)) return; e.preventDefault(); nextSlide() }
-  if (e.key === 'l' || e.key === 'L') { store.state.lyricsVisible ? hideLyrics() : showSong(store.state.activeSong?.id ?? 0) }
-  if (e.key === 'Escape') { hideLyrics(); hideLowerThird(); hideScripture(); hideAnnouncement() }
+  if (e.key === ' ' || e.code === 'Space') { if (isInput(e)) return; e.preventDefault(); store.nextSlide() }
+  if (e.key === 'ArrowLeft') { if (isInput(e)) return; e.preventDefault(); store.prevSlide() }
+  if (e.key === 'ArrowRight') { if (isInput(e)) return; e.preventDefault(); store.nextSlide() }
+  if (e.key === 'l' || e.key === 'L') { store.state.lyricsVisible ? store.hideLyrics() : store.showSong(store.state.activeSong?.id ?? 0) }
+  if (e.key === 'Escape') { store.hideLyrics(); hideLowerThird(); hideScripture(); hideAnnouncement() }
 }
 
 onMounted(async () => {
@@ -451,9 +436,9 @@ onUnmounted(() => {
             <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Actions</h3>
             <div class="space-y-2">
               <button @click="hideLowerThird()" class="w-full px-3 py-2 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">Hide Lower Third</button>
-              <button @click="hideLyrics()" class="w-full px-3 py-2 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">Hide Lyrics</button>
+              <button @click="store.hideLyrics()" class="w-full px-3 py-2 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">Hide Lyrics</button>
               <button @click="hideScripture()" class="w-full px-3 py-2 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">Hide Scripture</button>
-              <button @click="hideLowerThird(); hideLyrics(); hideScripture(); hideAnnouncement()" class="w-full px-3 py-2 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">Hide All</button>
+              <button @click="hideLowerThird(); store.hideLyrics(); hideScripture(); hideAnnouncement()" class="w-full px-3 py-2 text-sm text-gray-300 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">Hide All</button>
             </div>
           </div>
         </div>
@@ -515,7 +500,7 @@ onUnmounted(() => {
                   <p v-if="selectedSong.artist" class="text-sm text-gray-400">{{ selectedSong.artist }}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button @click.prevent="showSong(selectedSong.id)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Send to Display</button>
+                  <button @click.prevent="store.showSong(selectedSong.id)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Send to Display</button>
                   <button @click.prevent="addToQueueApi('lyrics', selectedSong)" class="px-4 py-2 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors">Add to Queue</button>
                   <button @click="closeSongPreview" class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white transition-colors text-lg font-bold">&times;</button>
                 </div>
@@ -523,10 +508,10 @@ onUnmounted(() => {
               <div class="p-6 max-h-[500px] overflow-y-auto">
                 <div v-for="(slide, i) in selectedSong.slides" :key="slide.id">
                   <div v-if="slide.section_label && (!i || selectedSong.slides[i - 1].section_label !== slide.section_label)" class="text-xs font-semibold uppercase tracking-wider text-amber-400 pb-1 mb-3 mt-4 border-b border-gray-700">{{ slide.section_label }}</div>
-                  <div @click="goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer mb-3', store.state.lyricsVisible && store.state.activeSong?.id === selectedSong.id && store.state.activeSlide === i ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
+                  <div @click="store.goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer mb-3', store.isActiveSlide(selectedSong.id, i) ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
                     <div class="flex items-center justify-between mb-2">
                       <p class="text-xs text-gray-500">Slide {{ i + 1 }} / {{ selectedSong.slides.length }}</p>
-                      <span v-if="store.state.lyricsVisible && store.state.activeSong?.id === selectedSong.id && store.state.activeSlide === i" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
+                      <span v-if="store.isActiveSlide(selectedSong.id, i)" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
                     </div>
                     <p class="text-white text-base leading-relaxed whitespace-pre-wrap">{{ slide.content }}</p>
                   </div>
@@ -634,10 +619,10 @@ onUnmounted(() => {
                       </div>
                       <div v-for="(slide, i) in songData(item.source_id)!.slides" :key="slide.id || i">
                         <div v-if="slide.section_label && (!i || songData(item.source_id)!.slides[i - 1].section_label !== slide.section_label)" class="text-xs font-semibold uppercase tracking-wider text-amber-400 pb-1 mb-3 mt-4 border-b border-gray-700">{{ slide.section_label }}</div>
-                        <div @click="goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer mb-3', store.state.lyricsVisible && store.state.activeSong?.id === item.source_id && store.state.activeSlide === i ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
+                        <div @click="store.goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer mb-3', store.isActiveSlide(item.source_id, i) ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
                           <div class="flex items-center justify-between mb-2">
                             <p class="text-xs text-gray-500">Slide {{ i + 1 }} / {{ songData(item.source_id)!.slides.length }}</p>
-                            <span v-if="store.state.lyricsVisible && store.state.activeSong?.id === item.source_id && store.state.activeSlide === i" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
+                            <span v-if="store.isActiveSlide(item.source_id, i)" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
                           </div>
                           <p class="text-white text-base leading-relaxed whitespace-pre-wrap">{{ slide.content }}</p>
                         </div>
