@@ -29,7 +29,7 @@ class Song extends Model
         return null;
     }
 
-    public static function parseLyricsToSlides(?string $lyrics): array
+    public static function parseLyricsToSlides(?string $lyrics, int $linesPerSlide = 1): array
     {
         if (!$lyrics || !trim($lyrics)) {
             return [];
@@ -51,12 +51,10 @@ class Song extends Model
         }
         $slides = [];
         $index = 0;
-        for ($i = 0; $i < count($buffer); $i += 2) {
-            $content = $buffer[$i]['text'];
-            $section = $buffer[$i]['section'];
-            if (isset($buffer[$i + 1])) {
-                $content .= "\n" . $buffer[$i + 1]['text'];
-            }
+        for ($i = 0; $i < count($buffer); $i += $linesPerSlide) {
+            $chunk = array_slice($buffer, $i, $linesPerSlide);
+            $content = implode("\n", array_column($chunk, 'text'));
+            $section = $chunk[0]['section'];
             $slide = ['slide_order' => $index++, 'content' => $content];
             if ($section !== null) {
                 $slide['section_label'] = $section;
