@@ -13,12 +13,14 @@ class LowerThird extends Model
         'subtitle',
         'image',
         'template',
+        'width',
     ];
 
     protected function casts(): array
     {
         return [
             'template' => 'string',
+            'width' => 'string',
         ];
     }
 }

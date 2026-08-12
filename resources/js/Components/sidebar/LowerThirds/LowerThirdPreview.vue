@@ -4,6 +4,7 @@ defineProps<{
   subtitle?: string | null
   image?: string | null
   template: string
+  width?: string | null
 }>()
 </script>
 
@@ -33,12 +34,20 @@ defineProps<{
     </div>
 
     <!-- Banner -->
-    <div v-else class="preview banner">
+    <div v-else-if="template === 'banner'" class="preview banner">
       <div class="banner-bg" :style="image ? { backgroundImage: `url(${image})` } : {}">
         <div class="banner-overlay">
           <span class="pname">{{ name }}</span>
           <span v-if="subtitle" class="psub">{{ subtitle }}</span>
         </div>
+      </div>
+    </div>
+
+    <!-- Image Only -->
+    <div v-else-if="template === 'image-only'" class="preview image-only">
+      <img v-if="image" :src="image" class="pimg" alt="" />
+      <div v-else class="pimg-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" class="pimg-icon"><rect x="3" y="3" width="18" height="18" rx="2" stroke="#4B5563" stroke-width="1.5"/><circle cx="8.5" cy="8.5" r="1.5" fill="#4B5563"/><path d="M21 15l-5-5L5 21" stroke="#4B5563" stroke-width="1.5"/></svg>
       </div>
     </div>
   </div>
@@ -113,4 +122,26 @@ defineProps<{
 }
 .banner .pname { font-size: 14px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .banner .psub { font-size: 10px; font-weight: 500; color: #D4AF37; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Image Only */
+.image-only {
+  background: rgba(10, 15, 25, 0.3);
+  justify-content: center;
+  align-items: center;
+}
+.image-only .pimg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+.image-only .pimg-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.image-only .pimg-icon {
+  width: 24px;
+  height: 24px;
+}
 </style>

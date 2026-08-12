@@ -4,6 +4,7 @@ export interface LowerThird {
   subtitle: string | null
   image: string | null
   template: string
+  width: string | null
   created_at: string
   updated_at: string
 }

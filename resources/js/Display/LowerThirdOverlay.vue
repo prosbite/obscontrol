@@ -4,19 +4,21 @@ import { useGraphicsStore } from '@/Stores/graphics'
 import Classic from './LowerThirdDesigns/Classic.vue'
 import Minimal from './LowerThirdDesigns/Minimal.vue'
 import Banner from './LowerThirdDesigns/Banner.vue'
+import ImageOnly from './LowerThirdDesigns/ImageOnly.vue'
 
 const store = useGraphicsStore()
 const lt = computed(() => store.state.activeLowerThird)
 const visible = computed(() => store.state.lowerThirdVisible)
 
-const designMap: Record<string, any> = { classic: Classic, minimal: Minimal, banner: Banner }
+const designMap: Record<string, any> = { classic: Classic, minimal: Minimal, banner: Banner, 'image-only': ImageOnly }
 const activeDesign = computed(() => lt.value ? designMap[lt.value.template] || Classic : null)
+const transitionName = computed(() => lt.value?.template === 'image-only' ? 'lt-fade' : 'lt')
 </script>
 
 <template>
-  <Transition name="lt">
+  <Transition :name="transitionName">
     <div v-if="visible && lt" class="lower-third" :class="`design-${lt.template}`">
-      <component :is="activeDesign" :name="lt.name" :subtitle="lt.subtitle" :image="lt.image" />
+      <component :is="activeDesign" :name="lt.name" :subtitle="lt.subtitle" :image="lt.image" :width="lt.width" />
     </div>
   </Transition>
 </template>
@@ -51,4 +53,13 @@ const activeDesign = computed(() => lt.value ? designMap[lt.value.template] || C
 .lt-leave-active { transition: all 0.3s ease-in; }
 .lt-enter-from { transform: translateX(-120%); opacity: 0; }
 .lt-leave-to { transform: translateX(-120%); opacity: 0; }
+
+.design-image-only {
+  background: transparent;
+  box-shadow: none;
+}
+.lt-fade-enter-active { transition: opacity 0.4s ease; }
+.lt-fade-leave-active { transition: opacity 0.3s ease; }
+.lt-fade-enter-from { opacity: 0; }
+.lt-fade-leave-to { opacity: 0; }
 </style>

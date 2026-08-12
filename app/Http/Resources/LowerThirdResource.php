@@ -17,6 +17,7 @@ class LowerThirdResource extends JsonResource
             'subtitle' => $this->subtitle,
             'image' => $this->image,
             'template' => $this->template,
+            'width' => $this->width,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
