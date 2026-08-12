@@ -20,9 +20,10 @@ defineProps<{
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   font-size: 2vw;
   font-weight: 700;
+  text-transform: uppercase;
   color: #fff;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1;
   white-space: nowrap;
   display: inline-block;
 }

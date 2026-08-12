@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\LowerThirdController;
 use App\Http\Controllers\Api\QueueController;
 use App\Http\Controllers\Api\ScriptureController;
 use App\Http\Controllers\Api\SongController;
+use App\Http\Controllers\Api\UploadController;
 use App\Services\GraphicsState;
 use Illuminate\Support\Facades\Route;
 
@@ -18,6 +19,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::apiResource('songs', SongController::class);
     Route::apiResource('scriptures', ScriptureController::class);
     Route::apiResource('announcements', AnnouncementController::class);
+
+    Route::post('/upload', UploadController::class);
 
     Route::apiResource('queues', QueueController::class);
     Route::post('queues/{queue}/items', [QueueController::class, 'addItem']);

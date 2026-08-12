@@ -14,7 +14,8 @@ class StoreLowerThirdRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'subtitle' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'string', 'max:255'],
-            'template' => ['nullable', 'string', 'in:classic,minimal,banner'],
+            'template' => ['nullable', 'string', 'in:classic,minimal,banner,image-only'],
+            'width' => ['nullable', 'string', 'max:20'],
         ];
     }
 }

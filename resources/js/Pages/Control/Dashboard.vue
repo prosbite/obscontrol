@@ -14,6 +14,7 @@ const designs = [
   { value: 'classic', label: 'Classic', desc: 'Logo panel + text section' },
   { value: 'minimal', label: 'Minimal', desc: 'Clean dark bar with accent border' },
   { value: 'banner', label: 'Banner', desc: 'Full-width with optional background' },
+  { value: 'image-only', label: 'Image Only', desc: 'Uploaded image with fade animation' },
 ] as const
 
 const store = useGraphicsStore()
@@ -31,8 +32,9 @@ const songForm = ref<{ title: string; artist: string; lyrics: string }>({ title:
 
 const ltModal = ref(false)
 const selectDesign = ref(false)
-const ltForm = ref<{ id?: number; name: string; subtitle: string; image: string; template: string }>({ name: '', subtitle: '', image: '', template: 'classic' })
+const ltForm = ref<{ id?: number; name: string; subtitle: string; image: string; template: string; width: string }>({ name: '', subtitle: '', image: '', template: 'classic', width: '10vw' })
 const isEditing = ref(false)
+const uploading = ref(false)
 
 const queues = ref<QueueSet[]>([])
 const selectedQueueId = ref<number | null>(null)
@@ -210,17 +212,40 @@ function pickDesign(template: string) {
 }
 
 function openNewLt() {
-  ltForm.value = { name: '', subtitle: '', image: '', template: 'classic' }
+  ltForm.value = { name: '', subtitle: '', image: '', template: 'classic', width: '10vw' }
   isEditing.value = false
   selectDesign.value = true
   ltModal.value = true
 }
 
 function openEditLt(lt: LowerThird) {
-  ltForm.value = { id: lt.id, name: lt.name, subtitle: lt.subtitle ?? '', image: lt.image ?? '', template: lt.template }
+  ltForm.value = { id: lt.id, name: lt.name, subtitle: lt.subtitle ?? '', image: lt.image ?? '', template: lt.template, width: lt.width ?? '10vw' }
   isEditing.value = true
   selectDesign.value = false
   ltModal.value = true
+}
+
+async function uploadImage(file: File) {
+  uploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('image', file)
+    const { data } = await axios.post('/api/upload', formData)
+    ltForm.value.image = data.path
+    toast.success('Image uploaded')
+  } catch (e: any) {
+    console.error('Upload failed', e)
+    toast.error(e?.response?.data?.message || 'Upload failed')
+  } finally {
+    uploading.value = false
+  }
+}
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files?.length) {
+    uploadImage(input.files[0])
+  }
 }
 
 async function saveLt() {
@@ -230,6 +255,7 @@ async function saveLt() {
       subtitle: ltForm.value.subtitle || null,
       image: ltForm.value.image || null,
       template: ltForm.value.template,
+      width: ltForm.value.width || '10vw',
     }
     if (isEditing.value && ltForm.value.id) {
       const res = await axios.put(`/api/lower-thirds/${ltForm.value.id}`, payload)
@@ -678,9 +704,25 @@ onUnmounted(() => {
           <input v-model="ltForm.image" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="https://example.com/bg.jpg" />
         </div>
 
+        <div v-if="ltForm.template === 'image-only'" class="space-y-3">
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Image <span class="text-red-400">*</span></label>
+            <input type="file" accept="image/*" @change="onFileChange" class="w-full text-sm text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 file:cursor-pointer cursor-pointer" />
+            <p v-if="uploading" class="text-xs text-indigo-400 mt-1">Uploading...</p>
+            <img v-if="!uploading && ltForm.image" :src="ltForm.image" class="mt-2 max-h-24 rounded-lg object-contain" alt="" />
+          </div>
+          <div>
+            <label class="block text-sm text-gray-400 mb-1">Width</label>
+            <div class="flex items-center gap-2">
+              <input v-model="ltForm.width" class="w-24 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500" placeholder="10vw" />
+              <span class="text-xs text-gray-500">(e.g. 10vw, 300px, 50%)</span>
+            </div>
+          </div>
+        </div>
+
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" @click="ltModal = false" class="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancel</button>
-          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors">{{ isEditing ? 'Update' : 'Create' }}</button>
+          <button type="submit" :disabled="uploading || (ltForm.template === 'image-only' && !ltForm.image)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors">{{ isEditing ? 'Update' : 'Create' }}</button>
         </div>
       </form>
     </Modal>
