@@ -50,6 +50,17 @@ export const useGraphicsStore = defineStore('graphics', () => {
     sync(data)
   }
 
+  async function showScripturePassage(payload: {
+    reference: string
+    text: string
+    translation?: string | null
+    translation_abbr?: string | null
+    provider?: string | null
+  }) {
+    const { data } = await axios.post('/api/control/scripture/show-reference', payload)
+    sync(data)
+  }
+
   function goToSlide(index: number) {
     state.value.activeSlide = index
     axios.post('/api/control/lyrics/go-to', { slide_index: index })
@@ -79,6 +90,7 @@ export const useGraphicsStore = defineStore('graphics', () => {
     isActiveSlide,
     showSong,
     hideLyrics,
+    showScripturePassage,
     goToSlide,
     nextSlide,
     prevSlide,

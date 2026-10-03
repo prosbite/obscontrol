@@ -28,6 +28,7 @@ class ControlController
         $this->state->set('lowerThirdVisible', true);
         $this->state->set('activeLowerThird', $lowerThird->toArray());
         GraphicsEvent::dispatch('LowerThirdShown', ['lowerThird' => $lowerThird]);
+
         return response()->json($this->state->get());
     }
 
@@ -35,6 +36,7 @@ class ControlController
     {
         $this->state->set('lowerThirdVisible', false);
         GraphicsEvent::dispatch('LowerThirdHidden');
+
         return response()->json($this->state->get());
     }
 
@@ -52,6 +54,7 @@ class ControlController
         GraphicsEvent::dispatch('LyricsShown', [
             'song' => $songData,
         ]);
+
         return response()->json($this->state->get());
     }
 
@@ -59,6 +62,7 @@ class ControlController
     {
         $this->state->set('lyricsVisible', false);
         GraphicsEvent::dispatch('LyricsHidden');
+
         return response()->json($this->state->get());
     }
 
@@ -70,7 +74,7 @@ class ControlController
     public function nextSlide(): JsonResponse
     {
         $slides = $this->slidesFromState();
-        if (!count($slides)) {
+        if (! count($slides)) {
             return response()->json($this->state->get());
         }
         $currentSlide = $this->state->get()['activeSlide'];
@@ -80,6 +84,7 @@ class ControlController
             'slide' => $slides[$nextSlide]['content'] ?? null,
             'slideIndex' => $nextSlide,
         ]);
+
         return response()->json($this->state->get());
     }
 
@@ -87,7 +92,7 @@ class ControlController
     {
         $data = $request->validate(['slide_index' => 'required|integer|min:0']);
         $slides = $this->slidesFromState();
-        if (!count($slides)) {
+        if (! count($slides)) {
             return response()->json($this->state->get());
         }
         $index = min(max(0, $data['slide_index']), count($slides) - 1);
@@ -96,13 +101,14 @@ class ControlController
             'slide' => $slides[$index]['content'] ?? null,
             'slideIndex' => $index,
         ]);
+
         return response()->json($this->state->get());
     }
 
     public function previousSlide(): JsonResponse
     {
         $slides = $this->slidesFromState();
-        if (!count($slides)) {
+        if (! count($slides)) {
             return response()->json($this->state->get());
         }
         $currentSlide = $this->state->get()['activeSlide'];
@@ -112,6 +118,7 @@ class ControlController
             'slide' => $slides[$prevSlide]['content'] ?? null,
             'slideIndex' => $prevSlide,
         ]);
+
         return response()->json($this->state->get());
     }
 
@@ -122,6 +129,33 @@ class ControlController
         $this->state->set('activeScripture', $scripture->toArray());
         $this->state->set('scriptureVisible', true);
         GraphicsEvent::dispatch('ScriptureShown', ['scripture' => $scripture]);
+
+        return response()->json($this->state->get());
+    }
+
+    public function showScriptureReference(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'reference' => ['required', 'string', 'max:255'],
+            'text' => ['required', 'string'],
+            'translation' => ['nullable', 'string', 'max:100'],
+            'translation_abbr' => ['nullable', 'string', 'max:50'],
+            'provider' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $scripture = [
+            'id' => null,
+            'reference' => $data['reference'],
+            'text' => $data['text'],
+            'translation' => $data['translation'] ?? null,
+            'translation_abbr' => $data['translation_abbr'] ?? null,
+            'provider' => $data['provider'] ?? null,
+        ];
+
+        $this->state->set('activeScripture', $scripture);
+        $this->state->set('scriptureVisible', true);
+        GraphicsEvent::dispatch('ScriptureShown', ['scripture' => $scripture]);
+
         return response()->json($this->state->get());
     }
 
@@ -129,6 +163,7 @@ class ControlController
     {
         $this->state->set('scriptureVisible', false);
         GraphicsEvent::dispatch('ScriptureHidden');
+
         return response()->json($this->state->get());
     }
 
@@ -141,6 +176,7 @@ class ControlController
         $this->state->set('timerPaused', false);
         $this->state->set('timerStartedAt', now()->timestamp);
         GraphicsEvent::dispatch('TimerStarted', ['duration' => $data['duration']]);
+
         return response()->json($this->state->get());
     }
 
@@ -153,6 +189,7 @@ class ControlController
         $this->state->set('timerRunning', false);
         $this->state->set('timerPaused', true);
         GraphicsEvent::dispatch('TimerPaused', ['remaining' => $remaining]);
+
         return response()->json($this->state->get());
     }
 
@@ -164,6 +201,7 @@ class ControlController
         $this->state->set('timerPaused', false);
         $this->state->set('timerStartedAt', null);
         GraphicsEvent::dispatch('TimerStopped');
+
         return response()->json($this->state->get());
     }
 
@@ -173,6 +211,7 @@ class ControlController
         $this->state->set('timerPaused', false);
         $this->state->set('timerStartedAt', null);
         GraphicsEvent::dispatch('TimerStopped');
+
         return response()->json($this->state->get());
     }
 
@@ -187,6 +226,7 @@ class ControlController
         $this->state->set('announcements', $announcements->toArray());
         $this->state->set('announcementIndex', $index !== false ? $index : 0);
         GraphicsEvent::dispatch('AnnouncementShown', ['announcement' => $announcement]);
+
         return response()->json($this->state->get());
     }
 
@@ -194,13 +234,14 @@ class ControlController
     {
         $this->state->set('announcementVisible', false);
         GraphicsEvent::dispatch('AnnouncementHidden');
+
         return response()->json($this->state->get());
     }
 
     public function nextAnnouncement(): JsonResponse
     {
         $announcements = Announcement::orderBy('id')->get();
-        if (!$announcements->count()) {
+        if (! $announcements->count()) {
             return response()->json($this->state->get());
         }
         $index = min($this->state->get()['announcementIndex'] + 1, $announcements->count() - 1);
@@ -209,13 +250,14 @@ class ControlController
         $this->state->set('announcementIndex', $index);
         $this->state->set('announcements', $announcements->toArray());
         GraphicsEvent::dispatch('AnnouncementShown', ['announcement' => $announcement]);
+
         return response()->json($this->state->get());
     }
 
     public function previousAnnouncement(): JsonResponse
     {
         $announcements = Announcement::orderBy('id')->get();
-        if (!$announcements->count()) {
+        if (! $announcements->count()) {
             return response()->json($this->state->get());
         }
         $index = max(0, $this->state->get()['announcementIndex'] - 1);
@@ -224,7 +266,7 @@ class ControlController
         $this->state->set('announcementIndex', $index);
         $this->state->set('announcements', $announcements->toArray());
         GraphicsEvent::dispatch('AnnouncementShown', ['announcement' => $announcement]);
+
         return response()->json($this->state->get());
     }
-
 }

@@ -4,7 +4,7 @@ import { Head } from '@inertiajs/vue3'
 import MainLayout from '@/Components/sidebar/Layout/MainLayout.vue'
 import echo from '@/echo'
 import { useGraphicsStore } from '@/Stores/graphics'
-import type { LowerThird, Song, Scripture, Announcement, QueueSet, QueueItemResource } from '@/types/graphics'
+import type { LowerThird, Song, Scripture, Announcement, QueueSet, QueueItemResource, BiblePassage, BibleTranslation } from '@/types/graphics'
 import axios from 'axios'
 import { useToast } from 'vue-toastification'
 import Modal from '@/Components/sidebar/UI/Modal.vue'
@@ -30,6 +30,15 @@ const selectedSong = ref<Song | null>(null)
 const songModal = ref(false)
 const editingSong = ref<Song | null>(null)
 const songForm = ref<{ title: string; artist: string; lyrics: string }>({ title: '', artist: '', lyrics: '' })
+
+const bibleReference = ref('')
+const bibleTranslation = ref('')
+const bibleTranslations = ref<BibleTranslation[]>([])
+const biblePassage = ref<BiblePassage | null>(null)
+const bibleLoading = ref(false)
+const bibleError = ref('')
+const bibleProvider = ref('bible_api_com')
+const bibleDefaultTranslation = ref('')
 
 const ltModal = ref(false)
 const selectDesign = ref(false)
@@ -431,6 +440,83 @@ async function deleteSong(id: number) {
   }
 }
 
+async function fetchBibleTranslations() {
+  try {
+    const { data } = await axios.get('/api/bible/translations')
+    bibleTranslations.value = data.data ?? []
+    bibleProvider.value = data.provider ?? 'bible_api_com'
+    bibleDefaultTranslation.value = data.default ?? ''
+    if (!bibleTranslation.value) {
+      bibleTranslation.value = bibleDefaultTranslation.value || (bibleTranslations.value[0]?.id ?? '')
+    }
+  } catch (e) {
+    console.error('Failed to fetch Bible translations', e)
+  }
+}
+
+async function lookupBible() {
+  const reference = bibleReference.value.trim()
+  if (!reference) return
+  bibleLoading.value = true
+  bibleError.value = ''
+  try {
+    const { data } = await axios.get('/api/bible/passages', {
+      params: { reference, translation: bibleTranslation.value || undefined },
+    })
+    biblePassage.value = data.data
+  } catch (e: any) {
+    biblePassage.value = null
+    bibleError.value = e?.response?.data?.message || 'Lookup failed. Check the reference and try again.'
+  } finally {
+    bibleLoading.value = false
+  }
+}
+
+async function showBiblePassage() {
+  if (!biblePassage.value) return
+  try {
+    await store.showScripturePassage({
+      reference: biblePassage.value.reference,
+      text: biblePassage.value.text,
+      translation: biblePassage.value.translation,
+      translation_abbr: biblePassage.value.translation_abbr,
+      provider: biblePassage.value.provider,
+    })
+  } catch (e) {
+    console.error('Failed to show passage', e)
+    toast.error('Failed to show passage')
+  }
+}
+
+async function saveBiblePassage() {
+  if (!biblePassage.value) return
+  try {
+    const { data } = await axios.post('/api/bible/passages/save', {
+      reference: biblePassage.value.reference,
+      text: biblePassage.value.text,
+      translation: biblePassage.value.translation,
+      provider: biblePassage.value.provider,
+      translation_abbr: biblePassage.value.translation_abbr,
+    })
+    scriptures.value.push(data.data)
+    toast.success('Saved to library')
+  } catch (e: any) {
+    console.error('Failed to save passage', e)
+    toast.error(e?.response?.data?.message || 'Failed to save passage')
+  }
+}
+
+async function deleteScripture(id: number) {
+  if (!confirm('Delete this saved scripture?')) return
+  try {
+    await axios.delete(`/api/scriptures/${id}`)
+    scriptures.value = scriptures.value.filter(s => s.id !== id)
+  } catch (e) {
+    console.error('Failed to delete scripture', e)
+    toast.error('Failed to delete scripture')
+  }
+}
+
 function isInput(e: KeyboardEvent) {
   const tag = (e.target as HTMLElement)?.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable
@@ -446,6 +532,7 @@ function handleKeydown(e: KeyboardEvent) {
 
 onMounted(async () => {
   await fetchAll()
+  await fetchBibleTranslations()
 
   channel = echo.channel('graphics')
   channel.listen('.LowerThirdShown', (e: any) => store.sync({ activeLowerThird: e.lowerThird, lowerThirdVisible: true }))
@@ -592,10 +679,73 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="activeTab === 'scriptures'" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div v-for="sc in scriptures" :key="sc.id" class="bg-gray-900 rounded-xl p-4 border border-gray-800 cursor-pointer" @click="showScripture(sc.id)">
-              <h4 class="font-semibold text-white">{{ sc.reference }}</h4>
-              <p class="text-sm text-gray-400 line-clamp-2">{{ sc.text }}</p>
+          <div v-if="activeTab === 'scriptures'" class="space-y-4">
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+              <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Lookup Passage</h3>
+              <div class="flex flex-col md:flex-row gap-2">
+                <input
+                  v-model="bibleReference"
+                  @keydown.enter.prevent="lookupBible"
+                  placeholder="e.g. John 3:16-18 or Ps 23"
+                  class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+                />
+                <select
+                  v-model="bibleTranslation"
+                  class="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-indigo-500"
+                >
+                  <option v-for="t in bibleTranslations" :key="t.id" :value="t.id">{{ t.abbreviation || t.name }}</option>
+                </select>
+                <button
+                  @click="lookupBible"
+                  :disabled="bibleLoading || !bibleReference"
+                  class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm rounded-lg transition-colors"
+                >
+                  {{ bibleLoading ? 'Looking up…' : 'Lookup' }}
+                </button>
+              </div>
+              <p v-if="bibleError" class="text-sm text-red-400 mt-2">{{ bibleError }}</p>
+
+              <div v-if="biblePassage" class="mt-4 bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <h4 class="font-semibold text-white">
+                  {{ biblePassage.reference }}
+                  <span v-if="biblePassage.translation_abbr" class="text-amber-400">({{ biblePassage.translation_abbr }})</span>
+                </h4>
+                <p class="text-sm text-gray-300 whitespace-pre-wrap mt-2 max-h-48 overflow-y-auto">{{ biblePassage.text }}</p>
+                <div class="flex gap-2 mt-3">
+                  <button @click="showBiblePassage" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Show</button>
+                  <button @click="saveBiblePassage" class="px-4 py-2 text-sm bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 rounded-lg transition-colors">Save to library</button>
+                </div>
+                <p v-if="biblePassage.copyright" class="text-xs text-gray-500 mt-3">{{ biblePassage.copyright }}</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div v-for="sc in scriptures" :key="sc.id ?? sc.reference" class="bg-gray-900 rounded-xl p-4 border border-gray-800">
+                <div class="cursor-pointer" @click="sc.id && showScripture(sc.id)">
+                  <h4 class="font-semibold text-white">
+                    {{ sc.reference }}
+                    <span v-if="sc.translation_abbr" class="text-amber-400 text-sm">({{ sc.translation_abbr }})</span>
+                  </h4>
+                  <p class="text-sm text-gray-400 line-clamp-2">{{ sc.text }}</p>
+                </div>
+                <div class="flex gap-2 mt-3">
+                  <button v-if="sc.id" @click="showScripture(sc.id)" class="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Show</button>
+                  <button v-if="sc.id" @click="deleteScripture(sc.id)" class="px-3 py-1.5 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Delete</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-gray-900 rounded-xl p-4 border border-gray-800 text-xs text-gray-500">
+              <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Copyright &amp; Attributions</h3>
+              <p v-if="bibleProvider === 'api_bible'">
+                Scripture quotations are provided through
+                <a href="https://api.bible" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300 underline">api.bible</a>.
+                Translation copyright notices are shown with each passage and must remain visible when displayed.
+              </p>
+              <p v-else>
+                Passages are served from public-domain translations via
+                <a href="https://bible-api.com" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300 underline">bible-api.com</a>.
+              </p>
             </div>
           </div>
 

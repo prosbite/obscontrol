@@ -1,5 +1,9 @@
 <?php
 
+use App\Services\Bible\ApiBibleProvider;
+use App\Services\Bible\BibleApiComProvider;
+use App\Services\Bible\BibleService;
+use App\Services\Bible\ReferenceParser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +48,11 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function makeBibleService(string $apiKey = 'test-key'): BibleService
 {
-    // ..
+    return new BibleService(
+        new ReferenceParser((array) config('bible.books')),
+        new ApiBibleProvider($apiKey, (string) config('bible.api_bible.base_url')),
+        new BibleApiComProvider((string) config('bible.bible_api_com.base_url')),
+    );
 }

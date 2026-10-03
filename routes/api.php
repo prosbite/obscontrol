@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AnnouncementController;
+use App\Http\Controllers\Api\BibleController;
 use App\Http\Controllers\Api\ControlController;
 use App\Http\Controllers\Api\LowerThirdController;
 use App\Http\Controllers\Api\QueueController;
@@ -22,6 +23,10 @@ Route::middleware(['web', 'auth'])->group(function () {
 
     Route::post('/upload', UploadController::class);
 
+    Route::get('bible/translations', [BibleController::class, 'translations']);
+    Route::get('bible/passages', [BibleController::class, 'passages']);
+    Route::post('bible/passages/save', [BibleController::class, 'save']);
+
     Route::apiResource('queues', QueueController::class);
     Route::post('queues/{queue}/items', [QueueController::class, 'addItem']);
     Route::put('queues/{queue}/items/{item}', [QueueController::class, 'updateItem']);
@@ -38,6 +43,7 @@ Route::middleware(['web', 'auth'])->group(function () {
         Route::post('lyrics/go-to', [ControlController::class, 'goToSlide']);
         Route::post('lyrics/previous', [ControlController::class, 'previousSlide']);
         Route::post('scripture/show', [ControlController::class, 'showScripture']);
+        Route::post('scripture/show-reference', [ControlController::class, 'showScriptureReference']);
         Route::post('scripture/hide', [ControlController::class, 'hideScripture']);
         Route::post('timer/start', [ControlController::class, 'startTimer']);
         Route::post('timer/pause', [ControlController::class, 'pauseTimer']);

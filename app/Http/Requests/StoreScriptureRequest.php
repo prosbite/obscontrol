@@ -14,6 +14,10 @@ class StoreScriptureRequest extends FormRequest
             'reference' => ['required', 'string', 'max:255'],
             'text' => ['required', 'string'],
             'translation' => ['nullable', 'string', 'max:50'],
+            'provider' => ['nullable', 'string', 'max:50'],
+            'translation_abbr' => ['nullable', 'string', 'max:50'],
+            'canonical_reference' => ['nullable', 'string', 'max:500'],
+            'fetched_at' => ['nullable', 'date'],
         ];
     }
 }

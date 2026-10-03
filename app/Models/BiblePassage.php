@@ -6,19 +6,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Scripture extends Model
+class BiblePassage extends Model
 {
     protected $fillable = [
-        'reference',
-        'text',
-        'translation',
         'provider',
+        'translation',
+        'reference_key',
+        'label',
+        'text',
         'translation_abbr',
-        'canonical_reference',
+        'copyright',
+        'verses',
         'fetched_at',
     ];
 
     protected $casts = [
+        'verses' => 'array',
         'fetched_at' => 'datetime',
     ];
 }

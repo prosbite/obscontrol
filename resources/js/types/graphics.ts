@@ -57,12 +57,33 @@ export function parseLyricsToSlides(lyrics: string | null): SongSlide[] {
 }
 
 export interface Scripture {
-  id: number
+  id: number | null
   reference: string
   text: string
   translation: string | null
-  created_at: string
-  updated_at: string
+  provider?: string | null
+  translation_abbr?: string | null
+  canonical_reference?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface BibleTranslation {
+  id: string
+  name: string
+  abbreviation: string | null
+  language: string | null
+  provider: string
+}
+
+export interface BiblePassage {
+  reference: string
+  text: string
+  translation: string | null
+  translation_abbr: string | null
+  copyright: string | null
+  verses: Array<Record<string, unknown>>
+  provider: string | null
 }
 
 export interface Announcement {

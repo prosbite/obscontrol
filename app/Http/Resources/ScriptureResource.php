@@ -16,6 +16,9 @@ class ScriptureResource extends JsonResource
             'reference' => $this->reference,
             'text' => $this->text,
             'translation' => $this->translation,
+            'provider' => $this->provider,
+            'translation_abbr' => $this->translation_abbr,
+            'canonical_reference' => $this->canonical_reference,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
