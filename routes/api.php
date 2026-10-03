@@ -26,6 +26,7 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::post('queues/{queue}/items', [QueueController::class, 'addItem']);
     Route::put('queues/{queue}/items/{item}', [QueueController::class, 'updateItem']);
     Route::delete('queues/{queue}/items/{item}', [QueueController::class, 'removeItem']);
+    Route::patch('queues/{queue}/items/reorder', [QueueController::class, 'reorder']);
     Route::patch('queues/{queue}/items/{item}/move', [QueueController::class, 'moveItem']);
 
     Route::prefix('control')->group(function () {

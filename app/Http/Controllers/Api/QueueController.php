@@ -43,6 +43,8 @@ class QueueController
 
     public function show(Queue $queue): JsonResponse
     {
+        $queue->pruneOrphans();
+
         return response()->json(['data' => (new QueueResource($queue))->toArray(request())]);
     }
 
@@ -92,7 +94,7 @@ class QueueController
 
         $updated = $queue->updateItem($item, $data);
 
-        if (!$updated) {
+        if (! $updated) {
             return response()->json(['message' => 'Item not found'], 404);
         }
 
@@ -103,7 +105,7 @@ class QueueController
     {
         $removed = $queue->removeItem($item);
 
-        if (!$removed) {
+        if (! $removed) {
             return response()->json(['message' => 'Item not found'], 404);
         }
 
@@ -118,8 +120,24 @@ class QueueController
 
         $moved = $queue->moveItem($item, $data['direction']);
 
-        if (!$moved) {
+        if (! $moved) {
             return response()->json(['message' => 'Cannot move item'], 422);
+        }
+
+        $queue->pruneOrphans();
+
+        return response()->json(['data' => (new QueueResource($queue))->toArray(request())]);
+    }
+
+    public function reorder(Request $request, Queue $queue): JsonResponse
+    {
+        $data = $request->validate([
+            'item_ids' => 'required|array',
+            'item_ids.*' => 'string',
+        ]);
+
+        if (! $queue->reorderItems($data['item_ids'])) {
+            return response()->json(['message' => 'Item ids do not match the queue contents'], 422);
         }
 
         return response()->json(['data' => (new QueueResource($queue))->toArray(request())]);

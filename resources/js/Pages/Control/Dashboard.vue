@@ -9,6 +9,7 @@ import axios from 'axios'
 import { useToast } from 'vue-toastification'
 import Modal from '@/Components/sidebar/UI/Modal.vue'
 import LowerThirdPreview from '@/Components/sidebar/LowerThirds/LowerThirdPreview.vue'
+import draggable from 'vuedraggable'
 
 const designs = [
   { value: 'classic', label: 'Classic', desc: 'Logo panel + text section' },
@@ -40,12 +41,47 @@ const queues = ref<QueueSet[]>([])
 const selectedQueueId = ref<number | null>(null)
 const queueItems = ref<QueueItemResource[]>([])
 
-const currentQueueIndex = ref(-1)
+const currentQueueItemId = ref<string | null>(null)
 const expandedQueueItemId = ref<string | null>(null)
 const toast = useToast()
 
+const currentQueueIndex = computed(() => {
+  if (!currentQueueItemId.value) return -1
+  return queueItems.value.findIndex(i => i.id === currentQueueItemId.value)
+})
+
 function songData(sourceId: number) {
   return songs.value.find(s => s.id === sourceId) ?? null
+}
+
+function queueSource(item: QueueItemResource): LowerThird | Song | null {
+  if (item.type === 'lowerthird') {
+    return lowerThirds.value.find(lt => lt.id === item.source_id) ?? null
+  }
+  if (item.type === 'lyrics') {
+    return songs.value.find(s => s.id === item.source_id) ?? null
+  }
+  return null
+}
+
+function queueTitle(item: QueueItemResource): string {
+  const source = queueSource(item)
+  if (source) {
+    return 'name' in source ? source.name : source.title
+  }
+  return item.name ?? 'Unavailable'
+}
+
+function queueSubtitle(item: QueueItemResource): string {
+  const source = queueSource(item)
+  if (!source) return ''
+  return ('subtitle' in source ? source.subtitle : source.artist) ?? ''
+}
+
+function syncCurrentQueueItem() {
+  if (currentQueueItemId.value && !queueItems.value.some(i => i.id === currentQueueItemId.value)) {
+    currentQueueItemId.value = null
+  }
 }
 
 async function fetchQueues() {
@@ -59,10 +95,16 @@ async function fetchQueues() {
 
 async function selectQueue(id: number) {
   selectedQueueId.value = id
-  currentQueueIndex.value = -1
+  currentQueueItemId.value = null
+  await refreshQueueItems()
+}
+
+async function refreshQueueItems() {
+  if (!selectedQueueId.value) return
   try {
-    const { data } = await axios.get(`/api/queues/${id}`)
+    const { data } = await axios.get(`/api/queues/${selectedQueueId.value}`)
     queueItems.value = data.data.items ?? []
+    syncCurrentQueueItem()
   } catch (e) {
     console.error('Failed to fetch queue items', e)
   }
@@ -137,39 +179,43 @@ async function removeFromQueueApi(itemId: string) {
   try {
     await axios.delete(`/api/queues/${selectedQueueId.value}/items/${itemId}`)
     queueItems.value = queueItems.value.filter(i => i.id !== itemId)
-    for (let idx = 0; idx < queueItems.value.length; idx++) {
-      queueItems.value[idx].position = idx
-    }
+    queueItems.value.forEach((i, idx) => { i.position = idx })
+    syncCurrentQueueItem()
   } catch (e) {
     console.error('Failed to remove from queue', e)
   }
 }
 
-async function renameQueueItem(itemId: string) {
-  const name = prompt('New display name:')
-  if (!name || !selectedQueueId.value) return
-  try {
-    await axios.put(`/api/queues/${selectedQueueId.value}/items/${itemId}`, { name })
-    const idx = queueItems.value.findIndex(i => i.id === itemId)
-    if (idx !== -1) queueItems.value[idx].name = name
-  } catch (e) {
-    console.error('Failed to rename item', e)
+function editQueueItem(item: QueueItemResource) {
+  const source = queueSource(item)
+  if (!source) {
+    toast.error('Source no longer exists')
+    return
+  }
+  if (item.type === 'lowerthird') {
+    openEditLt(source as LowerThird)
+  } else {
+    openEditSong(source as Song)
   }
 }
 
-async function moveQueueItem(itemId: string, direction: 'up' | 'down') {
+async function onQueueReorder() {
   if (!selectedQueueId.value) return
   try {
-    const { data } = await axios.patch(`/api/queues/${selectedQueueId.value}/items/${itemId}/move`, { direction })
+    const { data } = await axios.patch(`/api/queues/${selectedQueueId.value}/items/reorder`, {
+      item_ids: queueItems.value.map(i => i.id),
+    })
     queueItems.value = data.data.items ?? []
+    syncCurrentQueueItem()
   } catch (e) {
-    console.error('Failed to move item', e)
+    console.error('Failed to reorder queue', e)
+    toast.error('Failed to save queue order')
+    await refreshQueueItems()
   }
 }
 
 async function showQueueItem(item: QueueItemResource) {
-  const idx = queueItems.value.findIndex(i => i.id === item.id)
-  if (idx !== -1) currentQueueIndex.value = idx
+  currentQueueItemId.value = item.id
   const type = item.type
   const sourceId = item.source_id
   if (!type || !sourceId) {
@@ -186,14 +232,14 @@ async function showQueueItem(item: QueueItemResource) {
 async function playNext() {
   if (currentQueueIndex.value < queueItems.value.length - 1) {
     const next = queueItems.value[currentQueueIndex.value + 1]
-    showQueueItem(next)
+    if (next) await showQueueItem(next)
   }
 }
 
 async function playPrev() {
   if (currentQueueIndex.value > 0) {
     const prev = queueItems.value[currentQueueIndex.value - 1]
-    showQueueItem(prev)
+    if (prev) await showQueueItem(prev)
   }
 }
 
@@ -603,61 +649,71 @@ onUnmounted(() => {
               <button @click="playPrev" :disabled="currentQueueIndex <= 0" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-gray-300 text-lg rounded-lg transition-colors">&#9664;</button>
               <span class="flex-1 text-center text-sm text-gray-400">
                 <template v-if="currentQueueIndex >= 0">
-                  Now playing: <span class="text-white font-medium">{{ queueItems[currentQueueIndex].name }}</span>
+                  Now playing: <span class="text-white font-medium">{{ queueTitle(queueItems[currentQueueIndex]) }}</span>
                 </template>
                 <template v-else>Select an item to display</template>
               </span>
               <button @click="playNext" :disabled="currentQueueIndex >= queueItems.length - 1" class="px-3 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-30 text-gray-300 text-lg rounded-lg transition-colors">&#9654;</button>
             </div>
 
-            <template v-for="(item, idx) in queueItems" :key="item.id">
-              <div :class="['rounded-xl border overflow-hidden transition-colors', idx === currentQueueIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-gray-900 border-gray-800']">
-                <div class="p-4 flex items-center gap-4">
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-0.5">
-                      <span class="text-xs font-medium text-indigo-400 uppercase tracking-wider">{{ item.type === 'lowerthird' ? 'Lower Third' : 'Song' }}</span>
-                      <span v-if="idx === currentQueueIndex" class="text-xs text-green-400">&#9679; Live</span>
-                    </div>
-                    <button @click="item.type === 'lyrics' && (expandedQueueItemId = expandedQueueItemId === item.id ? null : item.id)" class="w-full text-left">
-                      <h4 class="font-semibold text-white truncate text-lg">{{ item.name }}</h4>
-                    </button>
-                  </div>
-                  <div class="flex gap-2 shrink-0">
-                    <button @click="showQueueItem(item)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Show</button>
-                    <button @click="moveQueueItem(item.id, 'up')" :disabled="item.position === 0" class="px-2 py-2 text-sm bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-gray-300 rounded-lg transition-colors">&#9650;</button>
-                    <button @click="moveQueueItem(item.id, 'down')" :disabled="item.position === queueItems.length - 1" class="px-2 py-2 text-sm bg-gray-700 hover:bg-gray-600 disabled:opacity-30 text-gray-300 rounded-lg transition-colors">&#9660;</button>
-                    <button @click="renameQueueItem(item.id)" class="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">Edit</button>
-                    <button @click="removeFromQueueApi(item.id)" class="px-4 py-2 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Remove</button>
-                  </div>
-                </div>
-                <div v-if="expandedQueueItemId === item.id && item.type === 'lyrics'" class="border-t border-gray-800">
-                  <div class="p-4 max-h-[400px] overflow-y-auto">
-                    <div v-if="!songData(item.source_id)" class="text-center text-gray-500 py-6">
-                      <p>Song data not available</p>
-                    </div>
-                    <template v-else>
-                      <div class="flex items-center justify-between mb-4 px-1">
-                        <div>
-                          <h3 class="text-lg font-bold text-white">{{ songData(item.source_id)!.title }}</h3>
-                          <p v-if="songData(item.source_id)!.artist" class="text-sm text-gray-400">{{ songData(item.source_id)!.artist }}</p>
-                        </div>
-                        <button @click.prevent="showQueueItem(item)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Send to Display</button>
+            <draggable
+              v-model="queueItems"
+              item-key="id"
+              tag="div"
+              class="space-y-3"
+              handle=".queue-drag-handle"
+              :animation="150"
+              @end="onQueueReorder"
+            >
+              <template #item="{ element: item, index: idx }">
+                <div :class="['rounded-xl border overflow-hidden transition-colors', idx === currentQueueIndex ? 'bg-indigo-900/30 border-indigo-500' : 'bg-gray-900 border-gray-800']">
+                  <div class="p-4 flex items-center gap-3">
+                    <button type="button" class="queue-drag-handle shrink-0 px-1 text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing" title="Drag to reorder" aria-label="Drag to reorder">&#9776;</button>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-2 mb-0.5">
+                        <span class="text-xs font-medium text-indigo-400 uppercase tracking-wider">{{ item.type === 'lowerthird' ? 'Lower Third' : 'Song' }}</span>
+                        <span v-if="idx === currentQueueIndex" class="text-xs text-green-400">&#9679; Live</span>
                       </div>
-                      <div v-for="(slide, i) in songData(item.source_id)!.slides" :key="slide.id || i">
-                        <div v-if="slide.section_label && (!i || songData(item.source_id)!.slides[i - 1].section_label !== slide.section_label)" class="text-xs font-semibold uppercase tracking-wider text-amber-400 pb-1 mb-3 mt-4 border-b border-gray-700">{{ slide.section_label }}</div>
-                        <div @click="store.goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer mb-3', store.isActiveSlide(item.source_id, i) ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
-                          <div class="flex items-center justify-between mb-2">
-                            <p class="text-xs text-gray-500">Slide {{ i + 1 }} / {{ songData(item.source_id)!.slides.length }}</p>
-                            <span v-if="store.isActiveSlide(item.source_id, i)" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
+                      <button @click="item.type === 'lyrics' && (expandedQueueItemId = expandedQueueItemId === item.id ? null : item.id)" class="w-full text-left">
+                        <h4 class="font-semibold text-white truncate text-lg">{{ queueTitle(item) }}</h4>
+                        <p v-if="queueSubtitle(item)" class="text-sm text-gray-400 truncate">{{ queueSubtitle(item) }}</p>
+                      </button>
+                    </div>
+                    <div class="flex gap-2 shrink-0">
+                      <button @click="showQueueItem(item)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Show</button>
+                      <button @click="editQueueItem(item)" class="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors">Edit</button>
+                      <button @click="removeFromQueueApi(item.id)" class="px-4 py-2 text-sm bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors">Remove</button>
+                    </div>
+                  </div>
+                  <div v-if="expandedQueueItemId === item.id && item.type === 'lyrics'" class="border-t border-gray-800">
+                    <div class="p-4 max-h-[400px] overflow-y-auto">
+                      <div v-if="!songData(item.source_id)" class="text-center text-gray-500 py-6">
+                        <p>Song data not available</p>
+                      </div>
+                      <template v-else>
+                        <div class="flex items-center justify-between mb-4 px-1">
+                          <div>
+                            <h3 class="text-lg font-bold text-white">{{ songData(item.source_id)!.title }}</h3>
+                            <p v-if="songData(item.source_id)!.artist" class="text-sm text-gray-400">{{ songData(item.source_id)!.artist }}</p>
                           </div>
-                          <p class="text-white text-base leading-relaxed whitespace-pre-wrap">{{ slide.content }}</p>
+                          <button @click.prevent="showQueueItem(item)" class="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">Send to Display</button>
                         </div>
-                      </div>
-                    </template>
+                        <div v-for="(slide, i) in songData(item.source_id)!.slides" :key="slide.id || i">
+                          <div v-if="slide.section_label && (!i || songData(item.source_id)!.slides[i - 1].section_label !== slide.section_label)" class="text-xs font-semibold uppercase tracking-wider text-amber-400 pb-1 mb-3 mt-4 border-b border-gray-700">{{ slide.section_label }}</div>
+                          <div @click="store.goToSlide(i)" :class="['rounded-lg p-4 border transition-all cursor-pointer mb-3', store.isActiveSlide(item.source_id, i) ? 'bg-indigo-900/40 border-indigo-500' : 'bg-gray-800 border-transparent hover:border-gray-600']">
+                            <div class="flex items-center justify-between mb-2">
+                              <p class="text-xs text-gray-500">Slide {{ i + 1 }} / {{ songData(item.source_id)!.slides.length }}</p>
+                              <span v-if="store.isActiveSlide(item.source_id, i)" class="text-xs text-indigo-400 font-medium">&#9679; Current</span>
+                            </div>
+                            <p class="text-white text-base leading-relaxed whitespace-pre-wrap">{{ slide.content }}</p>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </template>
+              </template>
+            </draggable>
           </div>
         </div>
       </div>
