@@ -37,12 +37,16 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel
+                    for="email"
+                    value="Email"
+                    class="!text-gray-300"
+                />
 
                 <TextInput
                     id="email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full !rounded-lg !border-gray-700 !bg-gray-800 !text-white placeholder-gray-500 focus:!border-indigo-500 focus:!ring-indigo-500"
                     v-model="form.email"
                     required
                     autofocus
@@ -53,12 +57,16 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel
+                    for="password"
+                    value="Password"
+                    class="!text-gray-300"
+                />
 
                 <TextInput
                     id="password"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full !rounded-lg !border-gray-700 !bg-gray-800 !text-white placeholder-gray-500 focus:!border-indigo-500 focus:!ring-indigo-500"
                     v-model="form.password"
                     required
                     autocomplete="new-password"
@@ -71,12 +79,13 @@ const submit = () => {
                 <InputLabel
                     for="password_confirmation"
                     value="Confirm Password"
+                    class="!text-gray-300"
                 />
 
                 <TextInput
                     id="password_confirmation"
                     type="password"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full !rounded-lg !border-gray-700 !bg-gray-800 !text-white placeholder-gray-500 focus:!border-indigo-500 focus:!ring-indigo-500"
                     v-model="form.password_confirmation"
                     required
                     autocomplete="new-password"
@@ -90,6 +99,7 @@ const submit = () => {
 
             <div class="mt-4 flex items-center justify-end">
                 <PrimaryButton
+                    class="!bg-indigo-600 hover:!bg-indigo-700 focus:!ring-offset-gray-900"
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >

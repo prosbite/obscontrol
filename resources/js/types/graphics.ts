@@ -76,7 +76,7 @@ export interface Announcement {
 
 export interface QueueItemResource {
   id: string
-  name: string
+  name?: string
   type: 'lowerthird' | 'lyrics'
   source_id: number
   position: number
